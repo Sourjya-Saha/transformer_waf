@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Large log files
+*.log
+logs/
+logs_collection_juice_shop/*.json
+logs_collection_juice_shop/*.txt
+
+# OS & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env
