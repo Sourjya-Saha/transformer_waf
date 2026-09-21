@@ -5,7 +5,7 @@ A high-performance, deterministic Web Application Firewall (WAF) engineered in P
 > [!IMPORTANT]
 > **Deterministic Network Layer Security**:
 > - **Zero AI / Zero ML / Zero Transformers / Zero Blockchain / Zero Anomaly Detection**.
-> - 100% deterministic rule matching, RFC compliance enforcement, CIDR subnet filtering, multi-pass encoding normalization, Token Bucket & Sliding Window rate limiting, and secure XML/JSON/Multipart payload inspection.
+> - 100% deterministic rule matching, RFC compliance enforcement, CIDR Subnet filtering, multi-pass encoding normalization, Token Bucket & Sliding Window rate limiting, and secure XML/JSON/Multipart payload inspection.
 
 ---
 
