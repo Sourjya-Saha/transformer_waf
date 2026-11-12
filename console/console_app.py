@@ -14,14 +14,19 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import httpx
 import uvicorn
 
-from console.raw_socket_client import RawSocketClient
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from console.raw_socket_client import RawSocketClient
+except ImportError:
+    from raw_socket_client import RawSocketClient
 
 app = FastAPI(title="WAF Live Attack Console & Pipeline Visualizer", version="1.0.0")
 
 # Configuration
-TARGET_BASE_URL = os.getenv("TARGET_BASE_URL", "http://127.0.0.1:80").rstrip("/")
+TARGET_BASE_URL = os.getenv("TARGET_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 TARGET_HOST = os.getenv("TARGET_HOST", "127.0.0.1")
-TARGET_PORT = int(os.getenv("TARGET_PORT", "80"))
+TARGET_PORT = int(os.getenv("TARGET_PORT", "8000"))
 LOG_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs", "waf.log")
 
 # Raw socket client for byte-level evasion tests

@@ -1,311 +1,300 @@
-# Production-Ready Web Application Firewall (WAF)
+# 🛡️ Transformer-Based Web Application Firewall (WAF)
 
-A high-performance, deterministic Web Application Firewall (WAF) engineered in Python, FastAPI, and HTTPX. Designed to sit between reverse proxies (e.g. Nginx) and upstream application servers to intercept, parse, inspect, filter, and secure all incoming HTTP traffic.
-
-> [!IMPORTANT]
-> **Deterministic Network Layer Security**:
-> - **Zero AI / Zero ML / Zero Transformers / Zero Blockchain / Zero Anomaly Detection**.
-> - 100% deterministic rule matching, RFC compliance enforcement, CIDR Subnet filtering, multi-pass encoding normalization, Token Bucket & Sliding Window rate limiting, and secure XML/JSON/Multipart payload inspection.
+> **Deep Learning Anomaly Detection, Zero-Regex Threat Inspection, Live IPv4/IPv6 Geolocation Intelligence, and Retro macOS SOC Terminal Console.**
 
 ---
 
-## 1. System Architecture
+## 📌 Executive Summary
 
-```
-                      +-------------------+
-                      | Client / Internet |
-                      +---------+---------+
-                                |
-                                v
-               [ Port 80 / 443 (frontend-net) ]
-                      +-------------------+
-                      |    Nginx Proxy    |
-                      +---------+---------+
-                                |  (X-Forwarded-For / X-Real-IP)
-                                v
-               [ Port 8000 (Internal WAF Gateway) ]
-                      +-------------------+
-                      |   Web Firewall    |
-                      +---------+---------+
-                                |
-                   +------------+------------+
-                   |                         |
-            [ BLOCK (403/429) ]       [ ALLOW (Forward) ]
-                   |                         |
-                   v                         v
-          +-----------------+    [ Port 8080 (backend-net) ]
-          | Security Logger |       +-------------------+
-          |  (waf.log file) |       |  Backend Server   |
-          +-----------------+       | (Zero Public Access)|
-                                    +-------------------+
-```
+Modern web application firewalls rely on brittle, static regular expression rule sets (e.g., ModSecurity CRS) that are vulnerable to evasion techniques like encoding mutations, token splitting, and zero-day payload structures. 
 
-### Request Processing Pipeline
-
-```
-Incoming HTTP Request
-        │
-        ▼
-Extract Client IP (Trusted Proxy Header Resolution)
-        │
-        ▼
-[ Stage 1: IP Filtering ] ──(Blocklist / Allowlist CIDR Evaluation)──► [ BLOCK 403 ]
-        │
-        ▼
-[ Stage 2: Rate Limiting ] ──(Token Bucket & Sliding Window Limits)──► [ BLOCK 429 ]
-        │
-        ▼
-[ Stage 3: Header Validation ] ──(Required Headers, RFC, CRLF, UA)───► [ BLOCK 403 ]
-        │
-        ▼
-[ Stage 4: URL Inspection ] ──(Path Traversal, Double URL-Decode)────► [ BLOCK 403 ]
-        │
-        ▼
-[ Stage 5: Request Body Inspection ] ──(JSON, Form, Multipart, XML)──► [ BLOCK 403 ]
-        │
-        ▼
-[ Forwarding Engine ] ──(Async HTTPX Connection Pool)────────────────► Upstream Backend
-```
+This project implements a **deep-learning anomaly detection WAF** powered by a **BERT-style Masked Autoencoder (MAE)** trained on byte-level Byte-Pair Encoded (BPE) web tokens. Instead of searching for known attack signatures, the model learns the statistical, lexical, and structural probability distribution of legitimate HTTP requests. Payloads that deviate significantly in cross-entropy loss or contain anomalous structural characters trigger real-time mitigation, token attribution, and tamper-evident cryptographic logging.
 
 ---
 
-## 2. Directory Structure
+## 🏗️ System Architecture
 
 ```
-web_firewall/
-├── config/
-│   ├── __init__.py
-│   └── settings.py              # Environment configuration & pydantic settings
-├── engine/
-│   ├── __init__.py
-│   └── decision_engine.py       # Sequential security decision pipeline
-├── filters/
-│   ├── __init__.py
-│   ├── ip_filter.py             # Single IP and CIDR subnet evaluation
-│   ├── rate_limiter.py          # Token Bucket & Sliding Window algorithms
-│   └── header_validator.py      # RFC header validation, scanners & CRLF detection
-├── gateway/
-│   ├── __init__.py
-│   ├── proxy.py                 # FastAPI reverse proxy application & file logger
-│   ├── request_forwarder.py     # Async HTTPX connection pool & protocol relay
-│   └── server.py                # Uvicorn ASGI server entrypoint
-├── inspectors/
-│   ├── __init__.py
-│   ├── url_inspector.py         # Path traversal & multi-decode URL analyzer
-│   └── body_inspector.py        # JSON, Form, Multipart & XML/XXE payload inspector
-├── parsers/
-│   ├── __init__.py
-│   ├── request_parser.py        # Unified ASGI request extractor
-│   ├── header_parser.py         # RFC 7230 header parser & size limiter
-│   ├── query_parser.py          # Query parser with multi-pass decoding
-│   ├── cookie_parser.py         # Cookie string parser
-│   └── body_parser.py           # DefusedXML, JSON, Form & Multipart extractor
-├── rules/
-│   ├── __init__.py
-│   └── rules.py                 # Compiled deterministic regex attack signatures
-├── demo_backend/
-│   ├── backend_app.py           # Sample backend server for isolation demo
-│   └── Dockerfile               # Backend container Dockerfile
-├── logs/                        # Local security audit logs (waf.log)
-├── tests/                       # Pytest unit and integration test suite
-├── Dockerfile                   # Multi-stage production WAF container
-├── docker-compose.yml           # 3-tier isolated network deployment
-├── nginx.conf                   # Production Nginx reverse proxy configuration
-└── requirements.txt             # Python dependencies
+                                +---------------------------+
+                                |  Client / External User   |
+                                +-------------+-------------+
+                                              |
+                     [ Cloudflare Tunnel / Public Internet / HTTPS ]
+                                              |
+                                              v
+                                +---------------------------+
+                                |    Cloudflare Edge / CDN  |
+                                | (CF-Connecting-IP, IPv6)  |
+                                +-------------+-------------+
+                                              |
+                                              v
+                              +-------------------------------+
+                              |    Transformer WAF (Port 8000)|
+                              |          waf/waf.py           |
+                              +---------------+---------------+
+                                              |
+                  +---------------------------+---------------------------+
+                  |                                                       |
+        [ Anomaly Score < 1.0 ]                                 [ Anomaly Score >= 1.0 ]
+                  |                                                       |
+                  v                                                       v
+        +-------------------+                                   +-------------------+
+        | HTTP 200 / PASS   |                                   | HTTP 403 BLOCKED  |
+        | Inject Hardened   |                                   | Threat Token      |
+        | CSP & DOM Shield  |                                   | Attribution       |
+        +---------+---------+                                   +---------+---------+
+                  |                                                       |
+                  v                                                       v
+        +-------------------+                                   +-------------------+
+        | Upstream Backend  |                                   | SHA-256 Chained   |
+        | OWASP Juice Shop  |                                   | Audit Log         |
+        | (Port 3000)       |                                   | (waf_chain.jsonl) |
+        +-------------------+                                   +-------------------+
+                  |                                                       |
+                  +---------------------------+---------------------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                |  Retro macOS SOC Console  |
+                                |     http://localhost:8000 |
+                                |   (/console / /terminal)  |
+                                +---------------------------+
 ```
+
+### Core Pipeline Stages:
+1. **Multi-Pass Normalization (`waf/data.py`)**: Resolves recursive URL encoding (up to 3 passes), Unicode variations, whitespace collapsing, and masks high-entropy dynamic session values.
+2. **Byte-Pair Encoding (BPE)**: High-resolution subword tokenization preserving exact byte semantics without out-of-vocabulary (`[UNK]`) blind spots.
+3. **Transformer Scorer (`waf/model.py`)**: Contextual reconstruction engine measuring per-token cross-entropy error against benign baselines.
+4. **Token Attribution Engine**: Highlights the exact tokens (e.g., `' OR '`, `alert`, `<iframe`, `admin`) responsible for crossing the anomaly threshold.
+5. **Live Geolocation Engine**: Resolves IPv4 and complex IPv6 addresses (including Indian telecom networks like Reliance Jio `2405:201:...`, `2409:40e1:...` and Bharti Airtel) using Cloudflare headers and multi-tier geolocation fallbacks.
+6. **Client-Side Runtime & CSP Hardener**: Injects Content Security Policies (`script-src 'self'`, `frame-src 'self'`) into upstream responses to mitigate client-side DOM-based XSS attacks.
+7. **Tamper-Evident SHA-256 Hash Chain (`waf/chain.py`)**: Every request verdict is cryptographically linked to the previous record hash.
 
 ---
 
-## 3. Configuration Reference
+## 🚀 Quick Start Guide
 
-All settings can be customized via environment variables with prefix `WAF_` or in a `.env` file:
+### 1. Prerequisites
+- **Python 3.10+** (Tested on Python 3.11 & 3.13)
+- **Docker & Docker Compose** (for running target applications like OWASP Juice Shop)
+- **Cloudflared CLI** (optional, for public testing tunnels)
 
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `WAF_HOST` | `0.0.0.0` | Listening host for WAF gateway |
-| `WAF_PORT` | `8000` | Listening port for WAF gateway |
-| `WAF_BACKEND_URL` | `http://backend:8080` | URL of the protected backend server |
-| `WAF_LOG_FILE` | `logs/waf.log` | Path to structured audit log file |
-| `WAF_LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `WAF_TRUSTED_PROXIES` | `["127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]` | CIDRs trusted to supply `X-Forwarded-For` / `X-Real-IP` |
-| `WAF_IP_ALLOWLIST` | `[]` | Explicit allowed IPs/CIDRs (takes precedence; triggers default-deny if populated) |
-| `WAF_IP_BLOCKLIST` | `[]` | Blocked IPs/CIDRs |
-| `WAF_RATE_LIMIT_ENABLED` | `True` | Enable or disable rate limiter |
-| `WAF_RATE_LIMIT_ALGORITHM` | `token_bucket` | Rate limiting algorithm (`token_bucket` or `sliding_window`) |
-| `WAF_RATE_LIMIT_REQUESTS_PER_MINUTE` | `100` | Allowed requests per minute |
-| `WAF_RATE_LIMIT_REQUESTS_PER_HOUR` | `1000` | Allowed requests per hour |
-| `WAF_RATE_LIMIT_REQUESTS_PER_DAY` | `10000` | Allowed requests per day |
-| `WAF_RATE_LIMIT_BURST` | `20` | Burst token capacity for Token Bucket algorithm |
-| `WAF_REQUIRED_HEADERS` | `["host", "user-agent"]` | Mandatory HTTP request headers |
-| `WAF_BLOCKED_USER_AGENTS` | `["sqlmap", "nikto", "nmap", "gobuster", ...]` | Scanner signatures |
-| `WAF_MAX_HEADER_SIZE` | `16384` (16 KB) | Maximum total HTTP header size |
-| `WAF_MAX_BODY_SIZE` | `10485760` (10 MB) | Maximum request body payload size |
-| `WAF_MAX_DECODE_ITERATIONS` | `3` | Iterations for unquoting nested percent encodings |
-| `WAF_STRICT_CONTENT_LENGTH` | `True` | Validate `Content-Length` matches actual body length |
-
----
-
-## 4. Local Setup & Testing
-
-### Prerequisites
-- Python 3.10+
-- `pip`
-
-### Step 1: Install Dependencies
+### 2. Installation
+Clone the repository and install the dependencies:
 ```bash
+git clone https://github.com/sourjyasaha/WAF-TEST.git
+cd WAF-TEST
+
+# Install Python requirements
 pip install -r requirements.txt
 ```
 
-### Step 2: Run the Test Suite
-Execute all 55 comprehensive unit and integration tests:
+Copy the environment configuration template:
 ```bash
-pytest -v tests/
-```
-
-### Step 3: Run the Backend and WAF Locally
-In Terminal 1 (Start Sample Backend):
-```bash
-python -m demo_backend.backend_app
-```
-
-In Terminal 2 (Start WAF Gateway):
-```bash
-python -m web_firewall.gateway.server
+cp .env.example .env
 ```
 
 ---
 
-## 5. Docker Deployment (3-Tier Production Stack)
+## 🧪 Running with OWASP Juice Shop
 
-The provided `docker-compose.yml` launches a 3-tier architecture with network isolation:
-1. **`waf_nginx`**: Public-facing proxy receiving external traffic on port `80`.
-2. **`waf_gateway`**: WAF container bridging `frontend-net` and `backend-net`.
-3. **`waf_backend`**: Isolated upstream container inside `backend-net` with zero external ports.
+OWASP Juice Shop is the most sophisticated and modern insecure web application available, providing a realistic testbed for SQL Injection, XSS, and broken access controls.
 
-### Build and Start Stack
+### Step 1: Start OWASP Juice Shop
+Run Juice Shop in Docker on port `3000`:
 ```bash
-docker compose up --build -d
+docker run -d --name juice-shop -p 3000:3000 bkimminich/juice-shop
+```
+Verify Juice Shop is accessible directly at `http://localhost:3000`.
+
+### Step 2: Launch the Transformer WAF Reverse Proxy
+Start the WAF proxying to Juice Shop in active blocking mode:
+```bash
+python waf/waf.py serve --port 8000 --proxy http://localhost:3000 --block
 ```
 
-### Check Running Services
-```bash
-docker compose ps
-```
+| Flag | Description |
+|---|---|
+| `--port 8000` | Port where the WAF reverse proxy listens |
+| `--proxy http://localhost:3000` | Upstream target backend URL |
+| `--block` | Active blocking mode (returns `403 Forbidden` on anomalies; omits to run in monitor/log-only mode) |
+| `--threshold 1.0` | Anomaly score threshold (default: `1.0`) |
+
+Now access the application through the WAF at:
+👉 **`http://localhost:8000`**
 
 ---
 
-## 6. Verification and Security Validation (cURL Examples)
+## 🌐 Public Testing with Cloudflare Tunnels
 
-### Test 1: Legitimate Allowed Request
+To test the WAF against attacks originating from remote devices, mobile phones, or cellular networks (IPv4/IPv6), expose the WAF using a Cloudflare Tunnel (`cloudflared`).
+
+### Step 1: Install Cloudflared
+- **Windows (winget):**
+  ```powershell
+  winget install Cloudflare.cloudflared
+  ```
+- **macOS (Homebrew):**
+  ```bash
+  brew install cloudflared
+  ```
+- **Linux:**
+  ```bash
+  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  sudo dpkg -i cloudflared.deb
+  ```
+
+### Step 2: Create a Quick Ad-Hoc Tunnel
+Run `cloudflared` pointing to the WAF proxy on port 8000:
 ```bash
-curl -i http://localhost/api/users \
-  -H "Host: localhost" \
-  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+cloudflared tunnel --url http://localhost:8000
 ```
-**Expected Response**: `HTTP/1.1 200 OK` with JSON user list.
+
+Cloudflare will output a public HTTPS URL:
+```text
++--------------------------------------------------------------------------------------------+
+|  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+|  https://recording-common-dramatic-brooklyn.trycloudflare.com                             |
++--------------------------------------------------------------------------------------------+
+```
+
+### Step 3: Test from Mobile & External Networks
+Open the Cloudflare URL on a mobile device on 4G/5G or send attack payloads from an external network. The WAF will automatically extract:
+- `CF-Connecting-IP`
+- `CF-IPCountry`
+- `X-Forwarded-For`
+- Resolve the exact City, State, and ISP/Telecom provider (e.g. `Reliance Jio`, `Kolkata, West Bengal, IN 🇮🇳`).
 
 ---
 
-### Test 2: Path Traversal Attack (`../` and `..\`)
-```bash
-curl -i "http://localhost/files/../../etc/passwd" \
-  -H "Host: localhost" \
-  -H "User-Agent: Mozilla/5.0"
-```
-**Expected Response**: `HTTP/1.1 403 Forbidden`
+## 🖥️ Web Console & Retro macOS Terminal
+
+The WAF features a built-in interactive macOS SOC Terminal interface with real-time SSE streaming.
+
+Open your browser to:
+👉 **`http://localhost:8000/console`** (or `http://localhost:8000/terminal`)
+
+### Features:
+- **macOS Window Frame**: Styled terminal with traffic status lights (Red = Blocked, Green = Allowed).
+- **Live Event Stream**: Server-Sent Events (`/api/waf/stream`) streaming live requests without page reloads.
+- **Geographic Details**: Live display of client IP, flag, city, region, and ISP.
+- **Offending Token Highlighter**: Color-coded breakdown of tokens contributing to anomaly scores.
+
+---
+
+## ⚔️ Security Attack Scenarios & Research Findings
+
+### Scenario 1: SQL Injection (Login Form Bypass)
+Submit a classic SQL injection payload in the login endpoint (`POST /rest/user/login`):
 ```json
 {
-  "error": "Forbidden",
-  "message": "Request blocked by Web Application Firewall policy",
-  "stage": "URL_INSPECTOR",
-  "rule_id": "PT-001",
-  "reason": "Malicious pattern detected in URL path (PATH_TRAVERSAL): Detects standard directory traversal patterns"
+  "email": "' OR 1=1--",
+  "password": "test"
 }
 ```
 
----
-
-### Test 3: URL-Encoded & Double-Encoded Traversal (`%252e%252e%252f`)
-```bash
-curl -i "http://localhost/static/%252e%252e%252fetc%252fshadow" \
-  -H "Host: localhost" \
-  -H "User-Agent: Mozilla/5.0"
+**WAF Terminal Output:**
+```text
+[12:44:37 AM] [BLOCKED - 403] 2405:201:8017:6003:b5d1:38be:3b7:afad POST
+http://localhost:8000/rest/user/login
+ |-- VIOLATION: TRANSFORMER_WAF (Stage: TRANSFORMER_WAF)
+ |-- Reason: Transformer Anomaly Detected (score: 1.07 > 1.00). 
+ |   Anomalous tokens: '-'=11.8, 'or'=8.9, 'password'=7.5, ' '=6.5, '='=6.3
+ \-- Transformer Anomaly Score: 1.07 (Alert Threshold: 1.00 • Level: ALERT)
 ```
-**Expected Response**: `HTTP/1.1 403 Forbidden` (`PT-003` Double-Encoded Traversal detected).
-
----
-
-### Test 4: Blocked Automated Scanner User-Agent
-```bash
-curl -i http://localhost/ \
-  -H "Host: localhost" \
-  -H "User-Agent: sqlmap/1.5.2#stable"
-```
-**Expected Response**: `HTTP/1.1 403 Forbidden` (`HEADER_VALIDATOR: Blocked User-Agent signature identified`).
+The request is immediately halted with `HTTP 403 Forbidden` and never reaches the backend database.
 
 ---
 
-### Test 5: Missing Required Header (`Host` or `User-Agent`)
-```bash
-curl -i http://localhost/ -H "User-Agent:"
+### Scenario 2: DOM-based XSS vs. Network-Layer WAF (Key Research Finding)
+
+During security evaluation with the payload:
+```html
+http://localhost:8000/#/search?q=<iframe src="javascript:alert('XSS_TEST')"></iframe>
 ```
-**Expected Response**: `HTTP/1.1 403 Forbidden` (`Missing required HTTP header: 'user-agent'`).
+An interesting architectural boundary was observed:
+1. **The URL Fragment (`#/...`)**: RFC 3986 specifies that URL fragments following `#` are handled purely client-side by the browser and **never sent over the wire** in the HTTP request line.
+2. **Reverse Proxy Limitation**: Any network-layer reverse proxy WAF cannot inspect URL fragments because the browser never transmits them to the server.
+3. **The Socket.IO Secondary Channel**: As Juice Shop executed client-side search logic, it synchronized state with the server via WebSocket / Socket.IO polling (`POST /socket.io/?...`).
+4. **WAF Detection**: The Transformer WAF detected the anomalous payload inside the Socket.IO stream and blocked the POST request with score `1.465` (offending tokens: `alert`, `<`, `iframe`).
+5. **Defense-in-Depth Solution**: To prevent DOM execution when fragments never touch the wire, the WAF implements **Content Security Policy (CSP) Injection & Client-Side Runtime Shielding** directly in the HTML response stream:
+   ```http
+   Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; frame-src 'self'; object-src 'none';
+   ```
 
 ---
 
-### Test 6: Malicious JSON Payload (SQL Injection)
-```bash
-curl -i -X POST http://localhost/api/login \
-  -H "Host: localhost" \
-  -H "User-Agent: Mozilla/5.0" \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin'\'' OR 1=1--", "password": "password"}'
+## 📁 Repository Structure
+
 ```
-**Expected Response**: `HTTP/1.1 403 Forbidden` (`BODY_INSPECTOR: SQL_INJECTION`).
+WAF-TEST/
+├── .env.example                     # Sanitized configuration template
+├── .gitignore                       # Rules excluding datasets, caches, and secrets
+├── README.md                        # Master documentation
+├── requirements.txt                 # Project dependencies
+├── docker-compose.juiceshop.yml     # Standalone Juice Shop stack
+├── tests/
+│   └── test_waf.py                  # Pytest test suite (Scorer, Normalizer, Hash Chain, Routes)
+├── waf/
+│   ├── waf.py                       # Core Flask reverse proxy, scoring pipeline & CSP shield
+│   ├── model.py                     # PyTorch BERT Masked Autoencoder architecture
+│   ├── data.py                      # Multi-pass decoding & tokenizer normalization
+│   ├── chain.py                     # SHA-256 tamper-evident cryptographic hash audit log
+│   ├── terminal_ui.py               # Retro macOS SOC Terminal Console HTML/CSS/JS
+│   ├── evaluate.py                  # Anomaly evaluation scripts
+│   ├── finetune.py                  # LoRA parameter-efficient adaptation engine
+│   ├── benchmark_all_attacks.py     # 860+ payload threat matrix evaluation
+│   └── model/
+│       ├── model.pt                 # Trained PyTorch Transformer weights (35.4 MB)
+│       ├── tokenizer.json           # Byte-Pair Encoding (BPE) vocabulary
+│       ├── config.json              # Model hyperparameters
+│       └── lora.pt                  # Trained LoRA adapter weights
+```
 
 ---
 
-### Test 7: Malicious XML Payload (XXE Injection)
-```bash
-curl -i -X POST http://localhost/api/upload \
-  -H "Host: localhost" \
-  -H "User-Agent: Mozilla/5.0" \
-  -H "Content-Type: application/xml" \
-  -d '<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root><data>&xxe;</data></root>'
-```
-**Expected Response**: `HTTP/1.1 403 Forbidden` (`BODY_INSPECTOR: XML_EXTERNAL_ENTITY`).
+## 📊 Endpoints Reference
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/console` or `/terminal` | `GET` | Retro macOS SOC Terminal visual dashboard |
+| `/api/waf/stream` | `GET` | Real-time Server-Sent Events (SSE) log feed |
+| `/api/waf/logs` | `GET` | REST JSON endpoint for audit history |
+| `/health` | `GET` | Health check probe (returns `200 OK`) |
+| `/score` | `POST` | Programmatic single-request anomaly evaluation |
+| `/check` | Any | Nginx `auth_request` subrequest validation |
+| `/*` | Any | Transparent reverse proxy to upstream backend |
 
 ---
 
-### Test 8: Rate Limiting Burst Exhaustion (HTTP 429)
-Send rapid requests exceeding burst limits:
+## 🧪 Verification & Unit Testing
+
+Run the test suite using pytest:
 ```bash
-for i in {1..25}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost/ -H "Host: localhost" -H "User-Agent: Mozilla/5.0"; done
+# Set environment flag to disable external plugin conflicts
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD="1"   # PowerShell
+# export PYTEST_DISABLE_PLUGIN_AUTOLOAD="1" # Linux/macOS
+
+python -m pytest tests/test_waf.py -v
 ```
-**Expected Response**: Initial requests return `200`, followed by `429 Too Many Requests` with `Retry-After` header.
+
+**Expected Test Results:**
+```text
+tests/test_waf.py::test_scorer_loading PASSED             [ 20%]
+tests/test_waf.py::test_normalization_rules PASSED        [ 40%]
+tests/test_waf.py::test_benign_vs_attack_scoring PASSED   [ 60%]
+tests/test_waf.py::test_hash_chain_integrity PASSED       [ 80%]
+tests/test_waf.py::test_flask_endpoints PASSED            [100%]
+====================== 5 passed in 7.65s =======================
+```
+
+Verify cryptographic hash audit chain integrity:
+```bash
+python waf/chain.py verify waf_chain.jsonl
+```
 
 ---
 
-## 7. Structured Audit Logging
+## 📜 License
 
-Every decision (both `ALLOW` and `BLOCK`) is logged to `logs/waf.log` in single-line JSON format:
-
-```json
-{
-  "timestamp": "2026-08-20T00:50:00.123456+00:00",
-  "client_ip": "192.168.1.100",
-  "method": "GET",
-  "url": "http://localhost/files/../../etc/passwd",
-  "headers": {"host": "localhost", "user-agent": "Mozilla/5.0"},
-  "status_code": 403,
-  "action": "BLOCK",
-  "pipeline_stage": "URL_INSPECTOR",
-  "rule_id": "PT-001",
-  "reason": "Malicious pattern detected in URL path (PATH_TRAVERSAL): Detects standard directory traversal patterns"
-}
-```
-
-View live logs:
-```bash
-tail -f logs/waf.log
-```
+MIT License. Designed and developed for advanced web application security research and machine learning threat intelligence.

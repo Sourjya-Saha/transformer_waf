@@ -1,0 +1,49 @@
+services:
+  # Tier 1: Public Reverse Proxy (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: waf_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - frontend-net
+    depends_on:
+      - firewall
+
+  # Tier 2: Transformer-Based Web Application Firewall (WAF)
+  firewall:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: waf_gateway
+    restart: unless-stopped
+    environment:
+      - WAF_HOST=0.0.0.0
+      - WAF_PORT=8000
+      - WAF_PROXY=http://juice-shop:3000
+      - WAF_BLOCK=true  # Set to true for active blocking; false for monitor mode
+    volumes:
+      - ./waf/waf_chain.jsonl:/app/waf_chain.jsonl
+    networks:
+      - frontend-net
+      - backend-net
+    depends_on:
+      - juice-shop
+
+  # Tier 3: OWASP Juice Shop Target Application (Isolated)
+  juice-shop:
+    image: bkimminich/juice-shop
+    container_name: waf_juice_shop
+    restart: unless-stopped
+    networks:
+      - backend-net
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    internal: true  # Isolated network: Juice Shop cannot be accessed directly, only through WAF

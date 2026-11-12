@@ -14,7 +14,7 @@ services:
     depends_on:
       - firewall
 
-  # Tier 2: Web Application Firewall (WAF)
+  # Tier 2: Transformer-Based Web Application Firewall (WAF)
   firewall:
     build:
       context: .
@@ -22,16 +22,12 @@ services:
     container_name: waf_gateway
     restart: unless-stopped
     environment:
-      - WAF_BACKEND_URL=http://backend:8080
       - WAF_HOST=0.0.0.0
       - WAF_PORT=8000
-      - WAF_LOG_DIR=/app/logs
-      - WAF_LOG_FILE=/app/logs/waf.log
-      - WAF_RATE_LIMIT_ALGORITHM=token_bucket
-      - WAF_RATE_LIMIT_REQUESTS_PER_MINUTE=100
-      - WAF_RATE_LIMIT_BURST=20
+      - WAF_PROXY=http://backend:8080
+      - WAF_BLOCK=false  # Set to true for active blocking; false for monitor mode
     volumes:
-      - ./logs:/app/logs
+      - ./waf/waf_chain.jsonl:/app/waf_chain.jsonl
     networks:
       - frontend-net
       - backend-net

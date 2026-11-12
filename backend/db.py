@@ -183,15 +183,17 @@ class DatabaseManager:
     # ==========================================================================
     @staticmethod
     def authenticate_staff(username_or_email: str, password: str = "") -> Optional[Dict[str, Any]]:
+        if not username_or_email or not password:
+            return None
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    "SELECT id, username, email, full_name, role, department, license_number, avatar_initials FROM staff_users WHERE username = %s OR email = %s",
+                    "SELECT id, username, email, password_hash, full_name, role, department, license_number, avatar_initials FROM staff_users WHERE username = %s OR email = %s",
                     (username_or_email, username_or_email)
                 )
                 user = cursor.fetchone()
-                if user:
+                if user and user.get("password_hash") == password:
                     return {
                         "status": "authenticated",
                         "user": user["username"],
@@ -212,12 +214,19 @@ class DatabaseManager:
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
+                # Check for existing user
+                cursor.execute("SELECT id FROM staff_users WHERE username = %s OR email = %s", (username, email))
+                existing = cursor.fetchone()
+                if existing:
+                    return {"error": "Username or email is already registered", "status": "conflict"}
+
                 initials = "".join([part[0].upper() for part in full_name.split()[:2]]) or "MD"
                 cursor.execute(
                     "INSERT INTO staff_users (username, email, password_hash, full_name, role, department, avatar_initials) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (username, email, password, full_name, role, department, initials)
                 )
                 return {
+                    "status": "created",
                     "id": cursor.lastrowid,
                     "username": username,
                     "email": email,

@@ -71,33 +71,38 @@ async def health_check():
 @app.post("/api/login")
 async def api_login(payload: Dict[str, Any]):
     """Staff authentication against MySQL staff_users table."""
-    username = str(payload.get("username", ""))
-    password = str(payload.get("password", ""))
+    username = str(payload.get("username", "")).strip()
+    password = str(payload.get("password", "")).strip()
+    if not username or not password:
+        return JSONResponse(status_code=400, content={"error": "Username and password are required"})
+
     user = DatabaseManager.authenticate_staff(username, password)
     if user:
         return user
-    return {
-        "status": "authenticated",
-        "user": username,
-        "email": f"{username}@medcore.health",
-        "full_name": "Dr. Sarah Chen, MD",
-        "role": "Attending Physician",
-        "department": "Internal Medicine",
-        "avatar_initials": "SC",
-        "token": f"medcore-jwt-{username}-session"
-    }
+
+    return JSONResponse(
+        status_code=401,
+        content={"error": "Invalid clinician credentials. Please check your username and password."}
+    )
 
 
 @app.post("/api/auth/register")
 async def api_register(payload: Dict[str, Any]):
     """Registers a new clinician or clinical staff user."""
-    username = str(payload.get("username", ""))
-    email = str(payload.get("email", ""))
-    password = str(payload.get("password", ""))
-    full_name = str(payload.get("full_name", ""))
-    role = str(payload.get("role", "Attending Clinician"))
-    department = str(payload.get("department", "General Medicine"))
-    return DatabaseManager.register_staff(username, email, password, full_name, role, department)
+    username = str(payload.get("username", "")).strip()
+    email = str(payload.get("email", "")).strip()
+    password = str(payload.get("password", "")).strip()
+    full_name = str(payload.get("full_name", "")).strip()
+    role = str(payload.get("role", "Attending Clinician")).strip()
+    department = str(payload.get("department", "General Medicine")).strip()
+
+    if not username or not email or not password:
+        return JSONResponse(status_code=400, content={"error": "Username, email, and password are required"})
+
+    result = DatabaseManager.register_staff(username, email, password, full_name, role, department)
+    if "error" in result:
+        return JSONResponse(status_code=409, content={"error": result["error"]})
+    return JSONResponse(status_code=201, content=result)
 
 
 @app.get("/api/auth/staff")

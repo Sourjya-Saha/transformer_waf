@@ -1,21 +1,86 @@
-# Dependencies
-node_modules/
+# ==============================================================================
+# Environment & Sensitive Credentials
+# ==============================================================================
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+*.cert
+*.p12
+
+# ==============================================================================
+# Python & Virtual Environments
+# ==============================================================================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
 .pytest_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Large log files
+# ==============================================================================
+# Node.js & Next.js Caches / Build Artifacts
+# ==============================================================================
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+out/
+frontend/out/
+*.pack
+*.pack.gz
+.pnpm-debug.log*
+
+# ==============================================================================
+# Large Datasets & Training Corpora (>100MB / Gigabyte corpora)
+# ==============================================================================
+new_dataset/
+data/
+waf/data/
+
+# ==============================================================================
+# Duplicate / Legacy Model Backups (Active primary model is in waf/model/)
+# ==============================================================================
+model_waf_v1/
+waf/model_backup/
+waf/model_waf_v1/
+
+# ==============================================================================
+# Runtime Logs & Dynamic Audit Trails
+# ==============================================================================
 *.log
 logs/
-logs_collection_juice_shop/*.json
-logs_collection_juice_shop/*.txt
+dvwa_logs/
+logs_collection_juice_shop/
+manual_logs/
+waf_chain.jsonl
+*.jsonl
 
-# OS & IDE files
+# ==============================================================================
+# OS & IDE Configuration
+# ==============================================================================
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-.env
+*.swp
+*.swo

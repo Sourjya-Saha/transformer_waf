@@ -1,0 +1,5 @@
+torch>=2.3
+tokenizers>=0.19
+numpy
+scikit-learn   # evaluate.py only
+flask          # `waf.py serve` only
