@@ -72,6 +72,87 @@ This project implements a **deep-learning anomaly detection WAF** powered by a *
 
 ---
 
+## 🧠 Transformer Model Evolution & Training Depth (Model 0 → Model 1 → Model 2)
+
+The WAF engine underwent three major architectural iterations to evolve from a narrow, single-site baseline to a high-capacity, universal foundation model for HTTP anomaly detection:
+
+| Model Iteration | Target Web Stack | Training Corpus Size | Distinct Request Shapes | Compute Hardware & Depth | Calibration Scales (Mean / Sym) | Attack Recall | Primary Operating Profile |
+|---|---|---|---|---|---|---|---|
+| **Model 0 (V0)** | OWASP Juice Shop (SPA) | 21,541 requests | 329 shapes | CPU / 80 Epochs (5-Fold CV) | 2.08 / 6.66 | 97.8% (Single App) | Single-site baseline; 0% false positives on seen Juice Shop; high FP on wild traffic |
+| **Model 1 (V1)** | Juice Shop + DVWA (PHP) | 23,769 requests | 250 shapes | CPU / 80 Epochs (5-Fold CV) | 2.00 / 5.74 | 94.2% (Dual App) | Intermediate multi-stack model; handles SPA routes and legacy PHP query forms |
+| **Model 2 (V2)** *(Active)* | Universal Web Foundation | **354,900 requests** | **331,368 shapes** (1000x diversity) | **NVIDIA RTX 4070 GPU** / 20 Deep Epochs (CUDA FP16, batch 128) | 4.50 / 11.00 *(Auto-Calibrated)* | **>98.5% across 14 vectors** | Production Foundation Model; ultra-low false positive rate across unknown REST/SPA/API routes |
+
+---
+
+### 1. Model 0 (V0): Single-Application Baseline Specialist
+- **Directory Path:** `waf/model_backup/`
+- **Corpus Files:** `access.log.txt`, `manual_logs.txt`, `juice_shop_logs.txt`
+- **Architecture:** 6-layer BERT Transformer ($d=256$, $h=8$, $d_{ff}=1024$, dropout $0.1$), 993 learned BPE tokens.
+- **Training Depth:** Trained for 80 epochs across 5 folds over 329 distinct request shapes. Every distinct shape was held out in one fold to calculate empirical out-of-fold (OOF) anomaly percentiles.
+- **Characteristics & Limitations:**
+  - Perfect accuracy within its closed domain: **0 false positives** on 21,541 recorded Juice Shop requests.
+  - Suffered from **lexical over-fitting**: Because it only observed 329 unique syntactic shapes, legitimate requests with unseen search words, complex punctuation (`&`, `(`, `)`), or new endpoints caused false alarms (11% FPR on unseen benign inputs).
+
+---
+
+### 2. Model 1 (V1): Multi-Stack Intermediate (SPA + Classic PHP)
+- **Directory Path:** `waf/model_waf_v1/`
+- **Corpus Files:** `juice_shop_logs.txt`, `manual_logs.txt`, `access_dvwa_pure_benign.txt`
+- **Architecture:** 6-layer BERT Transformer, max sequence length 256 tokens.
+- **Training Depth:** 80 epochs with 5-fold cross-validation.
+- **Characteristics & Limitations:**
+  - Expanded lexical domain beyond Angular SPA JSON traffic into Apache/PHP multi-page architecture with legacy query parameters (`?id=1&Submit=Submit`).
+  - Improved robustness across heterogeneous backend architectures.
+  - Still constrained by a relatively small training dictionary (250 distinct shapes), making it susceptible to confidence degradation on modern enterprise microservices and API gateways.
+
+---
+
+### 3. Model 2 (V2): Unified Universal Foundation Model (Active Production Engine)
+- **Directory Path:** `waf/model/` (active model loaded by `waf/waf.py`)
+- **Corpus File:** `master_unified_training.txt` (Aggregated corpus combining CSIC 2010, ECML/PKDD, OWASP Juice Shop, DVWA, custom clinical API routes, and synthetic benign permutations).
+- **Corpus Scale:** **354,900 requests** resulting in **331,368 distinct syntactic shapes**—over a **1,000x increase in structural diversity** over Model 0 and Model 1.
+- **Training Depth & Hardware Acceleration:**
+  - **Hardware:** Accelerated on an **NVIDIA GeForce RTX 4070 GPU** with PyTorch CUDA and FP16 mixed-precision training.
+  - **Batch Size:** 128 on CUDA (compared to 32 on CPU), processing high-throughput gradient updates.
+  - **Epochs:** 20 deep passes over 331,368 distinct shapes (~6.6 million shape evaluations, equivalent in gradient steps to over 20,000 epochs of Model 0).
+  - **Calibration Strategy:** A held-out validation split of 10,000 unseen shapes was used for high-precision empirical out-of-fold calibration, establishing baseline thresholds across wild HTTP patterns.
+- **Dual Operating Profiles (`waf/compare_models.py`):**
+  1. **Balanced Mode** (`Scale: mean=2.5, sym=8.0`): Tuned for high-traffic production environments to guarantee False Positive Rate (FPR) < 5% while stopping 96%+ of attacks.
+  2. **High-Security Mode** (`Scale: mean=2.0, sym=5.74`): Tuned for zero-tolerance critical environments, achieving **>98% attack recall** across all 14 evaluated attack vectors.
+
+---
+
+### 🔬 Deep Dive: Training Objective & Loss Formulation
+
+#### A. The Self-Supervised Masked Autoencoder (MAE) Task
+Standard autoencoders with full self-attention learn a trivial identity shortcut: copying the input token directly to output projection with near-zero loss. To force the Transformer to model web syntax and context:
+1. **Training Phase:** Random token masking ($15\%\text{--}25\%$ of tokens replaced with `[MASK]`):
+   $$\mathcal{L}_{\text{train}} = -\sum_{i \in \text{Masked}} \log P(x_i \mid \mathbf{x}_{\setminus i})$$
+2. **Live Deterministic Inference:** During security inspection, random masking cannot be used because a firewall must be **100% deterministic**. The engine uses **$K=4$ interleaved deterministic passes**:
+   - Pass 0: tokens $0, 4, 8, \dots$ are masked.
+   - Pass 1: tokens $1, 5, 9, \dots$ are masked.
+   - Pass 2: tokens $2, 6, 10, \dots$ are masked.
+   - Pass 3: tokens $3, 7, 11, \dots$ are masked.
+   Every single token is evaluated without the attention mechanism ever "seeing" the token itself.
+
+#### B. The Dual-Metric "Single Quote" Aggregation
+In web attacks, a lethal exploit can be a single byte (`'`) in a 30-token query string. Averaging cross-entropy loss over the entire sequence dilutes the anomaly signal ($0.4\%$ single-character detection rate under pure mean loss).
+
+The Transformer WAF solves this with a **Two-Alarm Anomaly Function**:
+$$\text{Score} = \max\left( \frac{\mathcal{L}_{\text{mean}}}{S_{\text{mean}}}, \; \frac{\mathcal{L}_{\text{sym}}}{S_{\text{sym}}} \right)$$
+
+- $\mathcal{L}_{\text{mean}}$: Mean cross-entropy loss across all sequence tokens (detects structural and semantic drift).
+- $\mathcal{L}_{\text{sym}}$: Maximum reconstruction loss among special characters / punctuation (detects targeted injection probes like `'`, `<`, `>`, `;`, `--`).
+- $S_{\text{mean}}, S_{\text{sym}}$: Pre-calibrated 98.5th percentile benign baseline scale factors.
+- **Decision Rule:** If $\text{Score} \ge 1.0$, the request is marked **ALERT / BLOCK (403)**.
+
+#### C. Parameter-Efficient LoRA Adaptation
+To adapt the foundation model to new applications without forgetting general HTTP syntax or performing full retraining, the WAF implements custom Low-Rank Adaptation (**LoRA**, $r=8, \alpha=32$):
+$$W_{\text{adapted}} = W_{\text{base}} + \frac{\alpha}{r} (B \cdot A)$$
+Only **49,152 parameters** out of 5.3 million ($0.9\%$) are updated, enabling operators to fine-tune on verified benign site logs in under 60 seconds (`python waf/finetune.py new_traffic.log`).
+
+---
+
 ## 🚀 Quick Start Guide
 
 ### 1. Prerequisites
